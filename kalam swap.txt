@@ -2,3 +2,46 @@ model is trained using both a small amount of labeled data and a large amount of
 
 
 Semi-supervised learning is a branch of machine learning that combines supervised and unsupervised learning by using both labeled and unlabeled data to train artificial intelligence (AI) models for classification and regression tasks.
+
+
+
+Why not build a model using the limited amount of labeled data that currently available 
+
+​
+
+Doing so intrudosing the posplty of overfitteng in wich the model preforms will in traing data but strugles to genrlize to new unseen data and the solotion to over fitteng is to incres thesize or comlccty of the data
+
+Posplty of overfitting
+
+posiblty 
+
+posiblty
+
+p
+
+
+Model preforms will in training data but struggles to generalize to new unseen data
+
+Problem​ 
+Solution 
+
+and the solotion to over fitteng is to 
+
+incres thesize or comlccty of the data ​
+
+Increase data size
+Increase data
+
+Increase data complexity
+
+
+Using a trained model to label
+an unlabeled data to create
+pseudo-Label
+(probabilistic labels that has a
+confidence level) and then the
+model will be trained again with
+the deterministic and the
+probabilistic labels​
+
+​
