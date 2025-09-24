@@ -1,0 +1,4 @@
+model is trained using both a small amount of labeled data and a large amount of unlabeled data in order to improve learning accuracy and generalization, especially when labeled data is scarce.
+
+
+Semi-supervised learning is a branch of machine learning that combines supervised and unsupervised learning by using both labeled and unlabeled data to train artificial intelligence (AI) models for classification and regression tasks.
