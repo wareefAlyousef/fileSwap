@@ -50,3 +50,14 @@ https://www.ibm.com/think/topics/semi-supervised-learning
 https://link.springer.com/rwe/10.1007/978-3-642-27848-8_766-1
 https://www.youtube.com/watch?v=C3Lr6Waw66g
 ​
+
+(Bergmann, 2025)
+Bergmann, D. (2025, July 22). Semi-Supervised Learning. IBM Think. https://www.ibm.com/think/topics/semi-supervised-learning
+
+
+(Blum, 2014)
+Blum, A. (2014). Semi-supervised learning. In Encyclopedia of Algorithms (pp. 1–7). https://doi.org/10.1007/978-3-642-27848-8_766-1
+
+
+(IBM Technology, 2025)
+IBM Technology. (2025, February 3). What is Semi-Supervised Learning? [Video]. YouTube. https://www.youtube.com/watch?v=C3Lr6Waw66g
