@@ -44,4 +44,9 @@ model will be trained again with
 the deterministic and the
 probabilistic labels​
 
+
+
+https://www.ibm.com/think/topics/semi-supervised-learning
+https://link.springer.com/rwe/10.1007/978-3-642-27848-8_766-1
+https://www.youtube.com/watch?v=C3Lr6Waw66g
 ​
