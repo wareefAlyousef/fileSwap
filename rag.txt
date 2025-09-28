@@ -103,3 +103,105 @@ def answer_query(query, product_id=None):
 
 # 5. Example usage
 print(answer_query("What do customers say about the battery life of Product X?"))
+
+
+
+
+
+
+
+
+
+
+
+
+import re
+import numpy as np
+import pandas as pd
+import faiss
+import torchtext.vocab as vocab
+from groq import Groq
+
+# -------------------
+# 1. Chunk reviews
+# -------------------
+def chunk_text(text, max_words=60):
+    words = str(text).split()
+    for i in range(0, len(words), max_words):
+        yield " ".join(words[i:i+max_words])
+
+chunks = []
+meta = []
+for _, row in processedDF.iterrows():
+    # merge title + content
+    review_text = str(row["review_title"]) + " " + str(row["review_content"])
+    for chunk in chunk_text(review_text):
+        chunks.append(chunk)
+        meta.append({"product_id": row["product_id"], "rating": row["rating"]})
+
+# -------------------
+# 2. GloVe embeddings
+# -------------------
+glove = vocab.GloVe(name="6B", dim=100)
+
+def text_to_vector(text, embeddings, dim=100):
+    words = re.findall(r'\w+', str(text).lower())
+    vectors = [embeddings[word].numpy() for word in words if word in embeddings.stoi]
+    if len(vectors) == 0:
+        return np.zeros(dim)
+    return np.mean(vectors, axis=0)
+
+# Create embeddings for chunks
+chunk_embeddings = np.array([text_to_vector(ch, glove, 100) for ch in chunks]).astype("float32")
+
+# -------------------
+# 3. Store in FAISS
+# -------------------
+dimension = chunk_embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(chunk_embeddings)
+
+print(f"Stored {len(chunks)} review chunks in FAISS index.")
+
+# -------------------
+# 4. Query function
+# -------------------
+def search_reviews(query, k=5):
+    q_emb = np.array([text_to_vector(query, glove, 100)]).astype("float32")
+    scores, idx = index.search(q_emb, k)
+    results = [chunks[i] for i in idx[0]]
+    return results
+
+# -------------------
+# 5. Answer query with Groq Llama 3.3
+# -------------------
+client = Groq(api_key="YOUR_GROQ_API_KEY")
+
+def answer_query(query, product_id=None):
+    retrieved = search_reviews(query, k=8)
+    context = "\n".join(retrieved)
+
+    prompt = f"""
+You are a helpful assistant that answers questions based only on the provided reviews.
+
+Question: {query}
+
+Reviews:
+{context}
+
+Answer clearly and concisely, citing only what is in the reviews.
+If nothing relevant is found, say "The reviews don't provide enough information."
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content
+
+# -------------------
+# 6. Example usage
+# -------------------
+print(answer_query("What do customers say about the charging speed of this cable?"))
