@@ -205,3 +205,123 @@ If nothing relevant is found, say "The reviews don't provide enough information.
 # 6. Example usage
 # -------------------
 print(answer_query("What do customers say about the charging speed of this cable?"))
+
+
+
+
+
+# -------------------
+# 1. Prepare combined documents from all columns
+# -------------------
+def build_document(row):
+    parts = []
+    parts.append(f"Product: {row['product_name']}")
+    parts.append(f"Category: {row['category']}")
+    parts.append(f"Discounted price: {row['discounted_price']} | Actual price: {row['actual_price']} | Discount: {row['discount_percentage']}")
+    parts.append(f"Rating: {row['rating']} from {row['rating_count']} reviews")
+    parts.append(f"About product: {row['about_product']}")
+    parts.append(f"User: {row['user_name']} (sentiment: {row['sentemnt']})")
+    parts.append(f"Review title: {row['review_title']}")
+    parts.append(f"Review content: {row['review_content']}")
+    return " | ".join(map(str, parts))
+
+# -------------------
+# 2. Chunking
+# -------------------
+def chunk_text(text, max_words=80):
+    words = str(text).split()
+    for i in range(0, len(words), max_words):
+        yield " ".join(words[i:i+max_words])
+
+chunks, meta = [], []
+for _, row in processedDF.iterrows():
+    document = build_document(row)
+    for chunk in chunk_text(document):
+        chunks.append(chunk)
+        meta.append({
+            "product_id": row["product_id"],
+            "product_name": row["product_name"],
+            "rating": row["rating"],
+            "sentiment": row["sentemnt"],
+            "category": row["category"],
+            "user_name": row["user_name"],
+            "review_id": row["review_id"]
+        })
+
+# -------------------
+# 3. Embedding with GloVe
+# -------------------
+glove = vocab.GloVe(name="6B", dim=100)
+
+def text_to_vector(text, embeddings, dim=100):
+    words = re.findall(r'\w+', str(text).lower())
+    vectors = [embeddings[word].numpy() for word in words if word in embeddings.stoi]
+    if len(vectors) == 0:
+        return np.zeros(dim)
+    return np.mean(vectors, axis=0)
+
+chunk_embeddings = np.array([text_to_vector(ch, glove, 100) for ch in chunks]).astype("float32")
+
+# -------------------
+# 4. Store in FAISS
+# -------------------
+dimension = chunk_embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(chunk_embeddings)
+
+print(f"Stored {len(chunks)} review chunks with metadata in FAISS.")
+
+# -------------------
+# 5. Search function
+# -------------------
+def search_reviews(query, k=5, product_id=None, category=None):
+    q_emb = np.array([text_to_vector(query, glove, 100)]).astype("float32")
+    scores, idx = index.search(q_emb, k*2)  # retrieve more, then filter
+
+    results = []
+    for i in idx[0]:
+        if i == -1: 
+            continue
+        entry = meta[i]
+        if product_id and entry["product_id"] != product_id:
+            continue
+        if category and category not in str(entry["category"]):
+            continue
+        results.append((chunks[i], entry))
+        if len(results) >= k:
+            break
+    return results
+
+# -------------------
+# 6. Groq Llama 3.3 Answer function
+# -------------------
+client = Groq(api_key="YOUR_GROQ_API_KEY")
+
+def answer_query(query, product_id=None, category=None):
+    retrieved = search_reviews(query, k=8, product_id=product_id, category=category)
+    context = "\n\n".join([f"Chunk: {txt}\nMeta: {m}" for txt, m in retrieved])
+
+    prompt = f"""
+You are a helpful assistant that answers questions based only on the provided Amazon reviews and metadata.
+
+Question: {query}
+
+Context:
+{context}
+
+Answer clearly and concisely, citing only what is in the reviews/metadata.
+If nothing relevant is found, say "The reviews don't provide enough information."
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content
+
+# -------------------
+# 7. Example usage
+# -------------------
+print(answer_query("Do users mention fast charging?", product_id="B07F1P8KNV"))
