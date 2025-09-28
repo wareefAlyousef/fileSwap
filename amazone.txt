@@ -203,7 +203,7 @@ prossedDF["row_vec"] = prossedDF.apply(combine_row_vectors, axis=1)
 
 
 
-
+pip install torchtext
 
 import re
 import numpy as np
