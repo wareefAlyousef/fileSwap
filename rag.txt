@@ -1,0 +1,105 @@
+# chunk reviews into smaller passages (2-3 sentences each)
+import re
+def chunk_text(text, max_words=60):
+    words = text.split()
+    for i in range(0, len(words), max_words):
+        yield " ".join(words[i:i+max_words])
+
+chunks = []
+meta = []
+for _, row in processedDF.iterrows():
+    for chunk in chunk_text(row["review_text"]):
+        chunks.append(chunk)
+        meta.append({"product_id": row["product_id"], "rating": row["rating"]})
+
+
+
+import re
+import numpy as np
+import torchtext.vocab as vocab
+
+# Load GloVe 100d embeddings (will auto-download first time)
+glove = vocab.GloVe(name="6B", dim=100)
+
+# Function: convert text into vector by averaging word embeddings
+def text_to_vector(text, embeddings, dim=100):
+    words = re.findall(r'\w+', str(text).lower())  # tokenize words
+    vectors = [embeddings[word].numpy() for word in words if word in embeddings.stoi]  
+    if len(vectors) == 0:
+        return np.zeros(dim)
+    return np.mean(vectors, axis=0)
+
+# Apply to each text column
+for col in prossedDF.columns:
+    prossedDF[col + "_vec"] = prossedDF[col].apply(lambda x: text_to_vector(x, glove, 100))
+
+# Optional: combine vectors from all columns into a single row vector
+def combine_row_vectors(row):
+    vectors = [row[col + "_vec"] for col in prossedDF.columns if col + "_vec" in row]
+    return np.mean(vectors, axis=0)
+
+prossedDF["row_vec"] = prossedDF.apply(combine_row_vectors, axis=1)
+
+
+
+
+def text_to_vector(text, embeddings, dim=100):
+    words = re.findall(r'\w+', str(text).lower())  # tokenize
+    vectors = [embeddings[word] for word in words if word in embeddings]
+    if len(vectors) == 0:
+        return np.zeros(dim)
+    return np.mean(vectors, axis=0)
+
+
+# Apply to each column
+for col in processedDF.columns:
+    processedDF[col + "_vec"] = processedDF[col].apply(lambda x: text_to_vector(x, glove_embeddings))
+
+# Optional: combine all columns into one row vector
+def combine_row_vectors(row):
+    vectors = [row[col + "_vec"] for col in processedDF.columns if col + "_vec" in row]
+    return np.mean(vectors, axis=0)
+
+processedDF["row_vec"] = processedDF.apply(combine_row_vectors, axis=1)
+
+
+
+# 3. Store in FAISS
+dimension = embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(embeddings)
+
+print(f"Stored {len(chunks)} review chunks in FAISS index.")
+
+
+# 4. Query function
+def search_reviews(query, k=5):
+    q_emb = embed_model.encode([query], convert_to_numpy=True)
+    scores, idx = index.search(q_emb, k)
+    results = [chunks[i] for i in idx[0]]
+    return results
+
+def answer_query(query, product_id=None):
+    # Retrieve context
+    retrieved = search_reviews(query, k=8)
+
+    # Build system prompt
+    context = "\n".join(retrieved)
+    prompt = f"""
+    You are a helpful assistant that answers questions based only on the provided reviews.
+
+    Question: {query}
+
+    Reviews:
+    {context}
+
+    Answer clearly and concisely, citing only what is in the reviews.
+    If nothing relevant is found, say "The reviews don't provide enough information."
+    """
+
+    # Send to local Llama 3.1 (using Ollama)
+    response = ollama.chat(model="llama3.1", messages=[{"role": "user", "content": prompt}])
+    return response["message"]["content"]
+
+# 5. Example usage
+print(answer_query("What do customers say about the battery life of Product X?"))
