@@ -158,3 +158,48 @@ print(tokenizer.decode(outputs[0]))
 
 
 https://nlp.stanford.edu/projects/glove/
+
+
+
+
+import numpy as np
+
+def load_glove(file_path):
+    embeddings = {}
+    with open(file_path, 'r', encoding='utf8') as f:
+        for line in f:
+            values = line.strip().split()
+            word = values[0]
+            vector = np.array(values[1:], dtype='float32')
+            embeddings[word] = vector
+    return embeddings
+
+glove_path = "path_to_glove/glove.6B.100d.txt"
+glove_embeddings = load_glove(glove_path)
+
+
+
+
+import re
+
+def text_to_vector(text, embeddings, dim=100):
+    words = re.findall(r'\w+', str(text).lower())  # tokenize
+    vectors = [embeddings[word] for word in words if word in embeddings]
+    if len(vectors) == 0:
+        return np.zeros(dim)
+    return np.mean(vectors, axis=0)
+
+# Apply to each column
+for col in prossedDF.columns:
+    prossedDF[col + "_vec"] = prossedDF[col].apply(lambda x: text_to_vector(x, glove_embeddings))
+
+# Optional: combine all columns into one row vector
+def combine_row_vectors(row):
+    vectors = [row[col + "_vec"] for col in prossedDF.columns if col + "_vec" in row]
+    return np.mean(vectors, axis=0)
+
+prossedDF["row_vec"] = prossedDF.apply(combine_row_vectors, axis=1)
+
+
+
+
