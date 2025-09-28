@@ -155,3 +155,6 @@ prompt = "Explain quantum computing in simple terms."
 inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
 outputs = model.generate(**inputs, max_new_tokens=100)
 print(tokenizer.decode(outputs[0]))
+
+
+https://nlp.stanford.edu/projects/glove/
