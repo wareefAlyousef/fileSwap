@@ -203,3 +203,30 @@ prossedDF["row_vec"] = prossedDF.apply(combine_row_vectors, axis=1)
 
 
 
+
+
+import re
+import numpy as np
+import torchtext.vocab as vocab
+
+# Load GloVe 100d embeddings (will auto-download first time)
+glove = vocab.GloVe(name="6B", dim=100)
+
+# Function: convert text into vector by averaging word embeddings
+def text_to_vector(text, embeddings, dim=100):
+    words = re.findall(r'\w+', str(text).lower())  # tokenize words
+    vectors = [embeddings[word].numpy() for word in words if word in embeddings.stoi]  
+    if len(vectors) == 0:
+        return np.zeros(dim)
+    return np.mean(vectors, axis=0)
+
+# Apply to each text column
+for col in prossedDF.columns:
+    prossedDF[col + "_vec"] = prossedDF[col].apply(lambda x: text_to_vector(x, glove, 100))
+
+# Optional: combine vectors from all columns into a single row vector
+def combine_row_vectors(row):
+    vectors = [row[col + "_vec"] for col in prossedDF.columns if col + "_vec" in row]
+    return np.mean(vectors, axis=0)
+
+prossedDF["row_vec"] = prossedDF.apply(combine_row_vectors, axis=1)
