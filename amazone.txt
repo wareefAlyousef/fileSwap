@@ -25,3 +25,85 @@ cleanDF["sentiment"] = cleanDF["full_review"].apply(get_sentiment)
 
 # If you want actual star ratings (1–5 instead of 0–4)
 cleanDF["sentiment"] = cleanDF["sentiment"] + 1
+
+
+
+# Install deps if needed:
+# pip install faiss-cpu sentence-transformers ollama pandas
+
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+import faiss
+import ollama
+
+# -----------------------------
+# 1. Load and prepare your reviews
+# -----------------------------
+df = pd.read_csv("amazon_reviews.csv")  
+# Expect columns like: product_id, review_text, rating, title
+df = df.dropna(subset=["review_text"])
+
+# Optional: chunk reviews into smaller passages (2-3 sentences each)
+import re
+def chunk_text(text, max_words=60):
+    words = text.split()
+    for i in range(0, len(words), max_words):
+        yield " ".join(words[i:i+max_words])
+
+chunks = []
+meta = []
+for _, row in df.iterrows():
+    for chunk in chunk_text(row["review_text"]):
+        chunks.append(chunk)
+        meta.append({"product_id": row["product_id"], "rating": row["rating"]})
+
+# -----------------------------
+# 2. Build embeddings
+# -----------------------------
+embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")  
+embeddings = embed_model.encode(chunks, convert_to_numpy=True)
+
+# -----------------------------
+# 3. Store in FAISS
+# -----------------------------
+dimension = embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(embeddings)
+
+print(f"Stored {len(chunks)} review chunks in FAISS index.")
+
+# -----------------------------
+# 4. Query function
+# -----------------------------
+def search_reviews(query, k=5):
+    q_emb = embed_model.encode([query], convert_to_numpy=True)
+    scores, idx = index.search(q_emb, k)
+    results = [chunks[i] for i in idx[0]]
+    return results
+
+def answer_query(query, product_id=None):
+    # Retrieve context
+    retrieved = search_reviews(query, k=8)
+
+    # Build system prompt
+    context = "\n".join(retrieved)
+    prompt = f"""
+    You are a helpful assistant that answers questions based only on the provided reviews.
+
+    Question: {query}
+
+    Reviews:
+    {context}
+
+    Answer clearly and concisely, citing only what is in the reviews.
+    If nothing relevant is found, say "The reviews don't provide enough information."
+    """
+
+    # Send to local Llama 3.1 (using Ollama)
+    response = ollama.chat(model="llama3.1", messages=[{"role": "user", "content": prompt}])
+    return response["message"]["content"]
+
+# -----------------------------
+# 5. Example usage
+# -----------------------------
+print(answer_query("What do customers say about the battery life of Product X?"))
