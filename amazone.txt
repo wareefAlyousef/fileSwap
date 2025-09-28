@@ -107,3 +107,19 @@ def answer_query(query, product_id=None):
 # 5. Example usage
 # -----------------------------
 print(answer_query("What do customers say about the battery life of Product X?"))
+
+
+
+
+
+
+
+
+      [end of output]
+
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for vllm
+Failed to build vllm
+error: failed-wheel-build-for-install
+
+× Failed to build installable wheels for some pyproject.toml based projects
