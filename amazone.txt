@@ -1,0 +1,27 @@
+import torch
+import pandas as pd
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+# Load model + tokenizer
+tokenizer = AutoTokenizer.from_pretrained("LiYuan/amazon-review-sentiment-analysis")
+model = AutoModelForSequenceClassification.from_pretrained("LiYuan/amazon-review-sentiment-analysis")
+
+# Make sure model is in eval mode
+model.eval()
+
+# Function to get sentiment
+def get_sentiment(text):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+        scores = torch.nn.functional.softmax(outputs.logits, dim=1)
+        predicted_class = scores.argmax(dim=1).item()
+    return predicted_class  # returns class index (e.g. 0–4 for 1 to 5 stars)
+
+# Example: apply on cleanDF
+# Assuming cleanDF['review_title'] and cleanDF['review_content'] exist
+cleanDF["full_review"] = cleanDF["review_title"].fillna("") + " " + cleanDF["review_content"].fillna("")
+cleanDF["sentiment"] = cleanDF["full_review"].apply(get_sentiment)
+
+# If you want actual star ratings (1–5 instead of 0–4)
+cleanDF["sentiment"] = cleanDF["sentiment"] + 1
