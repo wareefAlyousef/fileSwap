@@ -217,8 +217,8 @@ def build_document(row):
     parts = []
     parts.append(f"Product: {row['product_name']}")
     parts.append(f"Category: {row['category']}")
-    parts.append(f"Discounted price: {row['discounted_price']} | Actual price: {row['actual_price']} | Discount: {row['discount_percentage']}")
-    parts.append(f"Rating: {row['rating']} from {row['rating_count']} reviews")
+    parts.append(f"Price: discounted {row['discounted_price']}, actual {row['actual_price']} (discount {row['discount_percentage']})")
+    parts.append(f"Overall rating: {row['rating']} based on {row['rating_count']} reviews")
     parts.append(f"About product: {row['about_product']}")
     parts.append(f"User: {row['user_name']} (sentiment: {row['sentemnt']})")
     parts.append(f"Review title: {row['review_title']}")
@@ -241,10 +241,15 @@ for _, row in processedDF.iterrows():
         meta.append({
             "product_id": row["product_id"],
             "product_name": row["product_name"],
+            "category": row["category"],
             "rating": row["rating"],
             "sentiment": row["sentemnt"],
-            "category": row["category"],
+            "discounted_price": row["discounted_price"],
+            "actual_price": row["actual_price"],
+            "discount_percentage": row["discount_percentage"],
             "user_name": row["user_name"],
+            "img_link": row["img_link"],
+            "product_link": row["product_link"],
             "review_id": row["review_id"]
         })
 
