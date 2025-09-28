@@ -134,3 +134,24 @@ pip install --upgrade transformers accelerate
 
 # Optional: for fast tokenization
 pip install sentencepiece
+
+
+
+
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    torch_dtype=torch.float16,   # use bfloat16 or float16
+    device_map="auto"            # automatically puts layers on available GPUs
+)
+
+prompt = "Explain quantum computing in simple terms."
+inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+outputs = model.generate(**inputs, max_new_tokens=100)
+print(tokenizer.decode(outputs[0]))
